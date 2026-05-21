@@ -24,7 +24,7 @@ body, html {
     pointer-events: none; 
 }
 
-/* El video ocupa el 100% del fondo. ELIMINAMOS la transición de opacidad para máxima velocidad */
+/* El video ocupa el 100% del fondo */
 #localVideo {
     position: absolute;
     top: 0;
