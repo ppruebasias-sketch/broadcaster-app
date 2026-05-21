@@ -1,4 +1,4 @@
-// Archivo dedicado exclusivamente a la transmisión, redes y P2P
 console.log("Módulo de Transmisión WebRTC: CARGADO");
 
-// Aquí iremos agregando (y nunca borrando) la lógica de conexión con vMix/OBS
+// En la Fase 3, aquí inyectaremos toda la lógica estilo VDO.ninja para enviar 
+// la señal a tu vMix u OBS.
