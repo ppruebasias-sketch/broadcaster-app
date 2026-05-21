@@ -24,7 +24,7 @@ body, html {
     pointer-events: none; 
 }
 
-/* NUEVO: Agregamos una transición suave de opacidad para disimular el corte a negro del lente */
+/* El video ocupa el 100% del fondo. ELIMINAMOS la transición de opacidad para máxima velocidad */
 #localVideo {
     position: absolute;
     top: 0;
@@ -33,7 +33,6 @@ body, html {
     height: 100%;
     object-fit: cover;
     z-index: 1;
-    transition: opacity 0.4s ease-in-out;
 }
 
 #controls-overlay {
@@ -77,7 +76,6 @@ button:active {
     background: #0056b3;
 }
 
-/* Botón deshabilitado */
 button:disabled {
     background: #333 !important;
     color: #777;
@@ -100,7 +98,6 @@ button:disabled {
     transition: width 0.1s ease; 
 }
 
-/* NUEVO FASE 3: Textos de estado y Animación Tally (En Vivo) */
 #stream-info {
     text-align: center;
     font-size: 12px;
@@ -119,7 +116,6 @@ button:disabled {
     100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
 }
 
-/* NUEVO FASE 3: Modo Receptor (vMix). Oculta toda la UI para señal limpia */
 .receiver-mode #controls-overlay,
 .receiver-mode #app-container {
     display: none !important;

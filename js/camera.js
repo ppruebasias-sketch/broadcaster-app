@@ -1,4 +1,4 @@
-console.log("Módulo de Cámara y Hardware: CARGADO (v3.0)");
+console.log("Módulo de Cámara y Hardware: CARGADO (v4.0)");
 
 const videoElement = document.getElementById('localVideo');
 const videoSelect = document.getElementById('videoSource');
@@ -6,14 +6,15 @@ const audioSelect = document.getElementById('audioSource');
 const startBtn = document.getElementById('startBtn');
 const startupText = document.getElementById('startup-text');
 const audioLevel = document.getElementById('audio-level'); 
-
-// NUEVO: Vinculamos el botón de transmisión para habilitarlo
 const broadcastBtn = document.getElementById('broadcastBtn'); 
 
-// EXPORTAMOS currentStream para que webrtc.js pueda leerlo
 window.currentStream = null; 
 let audioContext = null; 
 let audioMeterInterval = null; 
+
+// Variables para rastrear qué hardware está en uso
+let currentVideoId = null;
+let currentAudioId = null;
 
 async function initHardware() {
     try {
@@ -37,7 +38,7 @@ async function initHardware() {
         });
 
         tempStream.getTracks().forEach(track => track.stop());
-        startupText.innerText = "Hardware Listo. (v3.0)";
+        startupText.innerText = "Hardware Listo. (v4.0)";
         startupText.style.fontSize = "14px";
     } catch (error) {
         startupText.innerText = "Acepta los permisos de cámara.";
@@ -71,10 +72,41 @@ function startAudioMeter(stream) {
     }
 }
 
-async function startCamera() {
+// Función principal de encendido (Mejorada para no cortar el video si solo cambia el audio)
+async function startCamera(isHardwareChange = false) {
     const videoSource = videoSelect.value;
     const audioSource = audioSelect.value;
 
+    // Inteligencia: Si la cámara ya está encendida y SOLO cambió el micrófono
+    if (isHardwareChange && window.currentStream && currentVideoId === videoSource && currentAudioId !== audioSource) {
+        console.log("Cambiando SOLO el audio en caliente...");
+        try {
+            const audioConstraints = {
+                audio: { deviceId: audioSource ? { exact: audioSource } : undefined, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+            };
+            const newAudioStream = await navigator.mediaDevices.getUserMedia(audioConstraints);
+            
+            // Removemos el audio viejo
+            const oldAudioTrack = window.currentStream.getAudioTracks()[0];
+            if (oldAudioTrack) {
+                window.currentStream.removeTrack(oldAudioTrack);
+                oldAudioTrack.stop();
+            }
+            
+            // Inyectamos el audio nuevo sin tocar el video
+            const newAudioTrack = newAudioStream.getAudioTracks()[0];
+            window.currentStream.addTrack(newAudioTrack);
+            currentAudioId = audioSource;
+            
+            startAudioMeter(window.currentStream);
+            if(window.activePeerConnection) window.updateWebRTCStream('audio');
+            return; // Salimos de la función para no reiniciar el video
+        } catch (e) {
+            console.error("Error al inyectar el nuevo audio", e);
+        }
+    }
+
+    // Si cambió la cámara, o es el primer encendido, ejecutamos completo
     const constraints = {
         video: {
             deviceId: videoSource ? { exact: videoSource } : undefined,
@@ -91,10 +123,9 @@ async function startCamera() {
     };
 
     try {
-        // Disimulamos el corte bajando la opacidad
-        videoElement.style.opacity = 0;
-
         const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+        
+        // Reemplazo directo y violento para minimizar pantalla negra
         videoElement.srcObject = newStream;
         
         if (window.currentStream) {
@@ -102,25 +133,22 @@ async function startCamera() {
         }
         
         window.currentStream = newStream;
-        startAudioMeter(window.currentStream);
+        currentVideoId = videoSource;
+        currentAudioId = audioSource;
         
-        // Devolvemos la opacidad suavemente
-        setTimeout(() => { videoElement.style.opacity = 1; }, 100);
-
+        startAudioMeter(window.currentStream);
         startupText.style.display = 'none';
         
-        // NUEVO: Habilitamos el botón de transmitir al estudio
         broadcastBtn.disabled = false;
-        broadcastBtn.innerText = "Transmitir al Estudio";
+        broadcastBtn.innerText = "Copiar Enlace para Estudio";
         broadcastBtn.style.background = "#007aff";
         
-        // NUEVO: Si ya hay una llamada activa en WebRTC, actualizamos la cámara en vivo
         if(window.activePeerConnection && window.currentStream) {
-            window.updateWebRTCStream(); // Función que crearemos en webrtc.js
+            window.updateWebRTCStream('video'); 
         }
         
     } catch (error) {
-        alert("El dispositivo no soporta esta resolución.");
+        alert("El dispositivo no soporta esta resolución o no hay permisos.");
     }
 }
 
@@ -129,25 +157,28 @@ function toggleCamera() {
         window.currentStream.getTracks().forEach(track => track.stop());
         videoElement.srcObject = null;
         window.currentStream = null;
+        currentVideoId = null;
+        currentAudioId = null;
         
         startBtn.innerText = "Encender Cámara";
         startBtn.style.background = "#007aff";
         if(audioMeterInterval) clearInterval(audioMeterInterval);
         audioLevel.style.width = '0%';
         
-        // NUEVO: Bloqueamos la transmisión si apagamos la cámara
         broadcastBtn.disabled = true;
         broadcastBtn.innerText = "Esperando Cámara...";
         broadcastBtn.classList.remove('pulse-live');
     } else {
-        startCamera();
+        startCamera(false);
         startBtn.innerText = "Apagar Cámara";
         startBtn.style.background = "#ff3b30";
     }
 }
 
 startBtn.addEventListener('click', toggleCamera);
-videoSelect.addEventListener('change', () => { if(window.currentStream) startCamera(); });
-audioSelect.addEventListener('change', () => { if(window.currentStream) startCamera(); });
+
+// Pasamos 'true' para avisar que es un cambio de menú y aplique la inteligencia de hardware
+videoSelect.addEventListener('change', () => { if(window.currentStream) startCamera(true); });
+audioSelect.addEventListener('change', () => { if(window.currentStream) startCamera(true); });
 
 initHardware();
