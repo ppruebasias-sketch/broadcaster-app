@@ -1,18 +1,20 @@
-console.log("Módulo de Cámara y Hardware: CARGADO");
+console.log("Módulo de Cámara y Hardware: CARGADO (v3.0)");
 
-// 1. Vinculamos los elementos del HTML
 const videoElement = document.getElementById('localVideo');
 const videoSelect = document.getElementById('videoSource');
 const audioSelect = document.getElementById('audioSource');
 const startBtn = document.getElementById('startBtn');
 const startupText = document.getElementById('startup-text');
-const audioLevel = document.getElementById('audio-level'); // NUEVO: Elemento del Vúmetro visual
+const audioLevel = document.getElementById('audio-level'); 
 
-let currentStream = null;
-let audioContext = null; // NUEVO: Para procesar el volumen
-let audioMeterInterval = null; // NUEVO: Para animar la barra
+// NUEVO: Vinculamos el botón de transmisión para habilitarlo
+const broadcastBtn = document.getElementById('broadcastBtn'); 
 
-// 2. Función para leer todo el hardware del celular (Se mantiene intacta)
+// EXPORTAMOS currentStream para que webrtc.js pueda leerlo
+window.currentStream = null; 
+let audioContext = null; 
+let audioMeterInterval = null; 
+
 async function initHardware() {
     try {
         const tempStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -35,15 +37,13 @@ async function initHardware() {
         });
 
         tempStream.getTracks().forEach(track => track.stop());
-        startupText.innerText = "Hardware Listo. (v2.0)";
+        startupText.innerText = "Hardware Listo. (v3.0)";
         startupText.style.fontSize = "14px";
     } catch (error) {
-        console.error("Error de permisos: ", error);
         startupText.innerText = "Acepta los permisos de cámara.";
     }
 }
 
-// 3. NUEVA FUNCION: Medir el volumen del micrófono en tiempo real (Vúmetro)
 function startAudioMeter(stream) {
     try {
         if(audioMeterInterval) clearInterval(audioMeterInterval);
@@ -59,21 +59,18 @@ function startAudioMeter(stream) {
         audioMeterInterval = setInterval(() => {
             analyser.getByteFrequencyData(dataArray);
             let sum = 0;
-            for(let i = 0; i < dataArray.length; i++) {
-                sum += dataArray[i];
-            }
+            for(let i = 0; i < dataArray.length; i++) { sum += dataArray[i]; }
             let average = sum / dataArray.length;
             let volumeLevel = Math.min(100, Math.round((average / 128) * 100));
             
             audioLevel.style.width = volumeLevel + '%';
-            audioLevel.style.background = volumeLevel > 85 ? '#ff3b30' : '#34c759'; // Rojo si satura, Verde si está bien
+            audioLevel.style.background = volumeLevel > 85 ? '#ff3b30' : '#34c759'; 
         }, 50);
     } catch (e) {
-        console.warn("El vúmetro no pudo iniciar en este navegador", e);
+        console.warn("Vúmetro no compatible", e);
     }
 }
 
-// 4. Encender la cámara (MEJORADA con transición sin pantalla negra)
 async function startCamera() {
     const videoSource = videoSelect.value;
     const audioSource = audioSelect.value;
@@ -94,60 +91,63 @@ async function startCamera() {
     };
 
     try {
-        // AGREGADO: Enciende la nueva cámara PRIMERO antes de apagar la vieja
+        // Disimulamos el corte bajando la opacidad
+        videoElement.style.opacity = 0;
+
         const newStream = await navigator.mediaDevices.getUserMedia(constraints);
         videoElement.srcObject = newStream;
         
-        // AGREGADO: Apaga la cámara vieja DESPUÉS para evitar el pestañeo en negro
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
+        if (window.currentStream) {
+            window.currentStream.getTracks().forEach(track => track.stop());
         }
         
-        currentStream = newStream;
+        window.currentStream = newStream;
+        startAudioMeter(window.currentStream);
         
-        // AGREGADO: Iniciamos el Vúmetro
-        startAudioMeter(currentStream);
-        
-        // Se mantiene la lógica de la interfaz
+        // Devolvemos la opacidad suavemente
+        setTimeout(() => { videoElement.style.opacity = 1; }, 100);
+
         startupText.style.display = 'none';
         
+        // NUEVO: Habilitamos el botón de transmitir al estudio
+        broadcastBtn.disabled = false;
+        broadcastBtn.innerText = "Transmitir al Estudio";
+        broadcastBtn.style.background = "#007aff";
+        
+        // NUEVO: Si ya hay una llamada activa en WebRTC, actualizamos la cámara en vivo
+        if(window.activePeerConnection && window.currentStream) {
+            window.updateWebRTCStream(); // Función que crearemos en webrtc.js
+        }
+        
     } catch (error) {
-        console.error("Error al arrancar la cámara:", error);
-        alert("Tu dispositivo no soporta esta resolución o faltan permisos.");
+        alert("El dispositivo no soporta esta resolución.");
     }
 }
 
-// 5. NUEVA FUNCION: Botón Interruptor (Apagar / Encender)
 function toggleCamera() {
-    if (currentStream) {
-        // SI ESTÁ ENCENDIDA: La apagamos
-        currentStream.getTracks().forEach(track => track.stop());
+    if (window.currentStream) {
+        window.currentStream.getTracks().forEach(track => track.stop());
         videoElement.srcObject = null;
-        currentStream = null;
+        window.currentStream = null;
         
-        // Reseteamos el botón al estado original
         startBtn.innerText = "Encender Cámara";
         startBtn.style.background = "#007aff";
-        
-        // Apagamos el vúmetro
         if(audioMeterInterval) clearInterval(audioMeterInterval);
         audioLevel.style.width = '0%';
-    } else {
-        // SI ESTÁ APAGADA: Ejecutamos nuestra función startCamera original
-        startCamera();
         
-        // Cambiamos el diseño del botón
+        // NUEVO: Bloqueamos la transmisión si apagamos la cámara
+        broadcastBtn.disabled = true;
+        broadcastBtn.innerText = "Esperando Cámara...";
+        broadcastBtn.classList.remove('pulse-live');
+    } else {
+        startCamera();
         startBtn.innerText = "Apagar Cámara";
         startBtn.style.background = "#ff3b30";
     }
 }
 
-// 6. Activamos los eventos de los botones y menús
-startBtn.addEventListener('click', toggleCamera); // Reemplazamos startCamera por toggleCamera
+startBtn.addEventListener('click', toggleCamera);
+videoSelect.addEventListener('change', () => { if(window.currentStream) startCamera(); });
+audioSelect.addEventListener('change', () => { if(window.currentStream) startCamera(); });
 
-// Si cambiamos de lente o mic en el menú, hace el cambio suave si la cámara ya está encendida
-videoSelect.addEventListener('change', () => { if(currentStream) startCamera(); });
-audioSelect.addEventListener('change', () => { if(currentStream) startCamera(); });
-
-// Iniciar lectura de hardware al cargar la web
 initHardware();

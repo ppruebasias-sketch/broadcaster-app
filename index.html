@@ -10,7 +10,7 @@
 <body>
 
     <div id="app-container">
-        <h1 id="startup-text">Iniciando Sistema... (v2.0)</h1>
+        <h1 id="startup-text">Iniciando Sistema... (v3.0)</h1>
     </div>
 
     <video id="localVideo" autoplay playsinline muted></video>
@@ -28,6 +28,15 @@
             <option value="">Buscando micrófonos...</option>
         </select>
         <button id="startBtn">Encender Cámara</button>
+
+        <hr style="border:0; border-top:1px solid #333; margin: 10px 0;">
+        
+        <div id="stream-info">
+            Estado: <span id="connection-status" style="color: #ffcc00;">Desconectado de la Red</span><br>
+            Sala ID: <span id="roomIdDisplay" style="color: #fff; font-weight: bold; user-select: all;">Generando...</span>
+        </div>
+        
+        <button id="broadcastBtn" disabled>Esperando Cámara...</button>
     </div>
 
     <script src="js/camera.js"></script>
