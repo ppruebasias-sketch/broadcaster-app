@@ -10,12 +10,17 @@
 <body>
 
     <div id="app-container">
-        <h1 id="startup-text">Iniciando Sistema...</h1>
+        <h1 id="startup-text">Iniciando Sistema... (v2.0)</h1>
     </div>
 
     <video id="localVideo" autoplay playsinline muted></video>
 
     <div id="controls-overlay">
+        
+        <div id="audio-meter">
+            <div id="audio-level"></div>
+        </div>
+
         <select id="videoSource">
             <option value="">Buscando cámaras...</option>
         </select>

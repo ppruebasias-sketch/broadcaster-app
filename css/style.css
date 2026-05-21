@@ -79,3 +79,20 @@ button {
 button:active {
     background: #0056b3;
 }
+
+/* --- NUEVAS FUNCIONES AGREGADAS (Vúmetro de Audio) --- */
+#audio-meter {
+    width: 100%;
+    height: 8px;
+    background: #111;
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #333;
+}
+
+#audio-level {
+    width: 0%;
+    height: 100%;
+    background: #34c759; /* Verde para señal sana */
+    transition: width 0.1s ease; /* Movimiento fluido del volumen */
+}
