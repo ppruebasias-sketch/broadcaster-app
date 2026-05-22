@@ -1,4 +1,4 @@
-console.log("Módulo de Cámara y Hardware: CARGADO (v6.0)");
+console.log("Módulo de Cámara y Hardware: CARGADO (v7.0)");
 
 const videoElement = document.getElementById('localVideo');
 const videoSelect = document.getElementById('videoSource');
@@ -7,6 +7,7 @@ const startBtn = document.getElementById('startBtn');
 const startupText = document.getElementById('startup-text');
 const audioLevel = document.getElementById('audio-level'); 
 const broadcastBtn = document.getElementById('broadcastBtn'); 
+const statusText = document.getElementById('connection-status'); // Para actualizar textos
 
 window.currentStream = null; 
 let audioContext = null; 
@@ -30,7 +31,7 @@ async function initHardware() {
         });
 
         tempStream.getTracks().forEach(track => track.stop());
-        startupText.innerText = "Hardware Listo. (v6.0)";
+        startupText.innerText = "Hardware Listo. (v7.0)";
         startupText.style.fontSize = "14px";
     } catch (error) { startupText.innerText = "Acepta permisos de cámara."; }
 }
@@ -89,13 +90,18 @@ async function startCamera(isHardwareChange = false) {
         startAudioMeter(window.currentStream);
         startupText.style.display = 'none';
         
+        // Verificamos si el enlace automático se logró generar
         if (window.cleanLinkReady) {
             broadcastBtn.disabled = false;
             broadcastBtn.innerText = "📋 Copiar Link Automático";
             broadcastBtn.style.background = "#007aff";
+            statusText.innerText = "Cámara lista y Conectado";
+        } else {
+            statusText.innerText = "Cámara Activa (Usa Modo Manual)";
         }
+
         if(window.updateWebRTCStream) window.updateWebRTCStream('video'); 
-    } catch (error) { alert("Dispositivo no soportado."); }
+    } catch (error) { alert("Dispositivo no soportado o bloqueado."); }
 }
 
 function toggleCamera() {

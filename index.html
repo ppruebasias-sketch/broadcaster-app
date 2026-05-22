@@ -10,7 +10,7 @@
 <body>
 
     <div id="app-container">
-        <h1 id="startup-text">Iniciando Sistema... (v6.0)</h1>
+        <h1 id="startup-text">Iniciando Sistema... (v7.0)</h1>
     </div>
 
     <video id="localVideo" autoplay playsinline muted></video>
@@ -30,15 +30,15 @@
         </div>
         <button id="broadcastBtn" disabled>Conexión Automática (Link)</button>
 
-        <button id="toggleManualBtn" style="background: #444; margin-top: 10px; font-size: 12px;">Modo Manual (Sin Servidor) ▼</button>
+        <button id="toggleManualBtn" style="background: #444; margin-top: 10px; font-size: 12px; border: 1px solid #666;">Modo Manual Seguro (Sin Servidor) ▼</button>
         
         <div id="manual-ui" class="hidden" style="margin-top: 10px; padding: 10px; background: #1a1a1a; border-radius: 8px;">
-            <p style="font-size: 11px; color: #aaa; margin-bottom: 5px;">1. Generar código sólido y enviar a PC:</p>
-            <button id="manualCopyOfferBtn" style="background: #e67e22;">📋 1. Copiar Mi Código Base64</button>
+            <p style="font-size: 11px; color: #aaa; margin-bottom: 5px;">1. Generar código y enviar a PC:</p>
+            <button id="manualCopyOfferBtn" style="background: #e67e22;">📋 Copiar Mi Código Base64</button>
             
             <p style="font-size: 11px; color: #aaa; margin-top: 10px; margin-bottom: 5px;">2. Pegar respuesta del Estudio:</p>
-            <input type="text" id="manualAnswerInput" placeholder="Pega el Base64 del estudio..." style="width: 100%; padding: 10px; border-radius: 6px; border: none; background: #333; color: white; margin-bottom: 5px;">
-            <button id="manualConnectBtn" style="background: #34c759;">🔗 2. Forzar Conexión</button>
+            <input type="text" id="manualAnswerInput" placeholder="Pega respuesta aquí..." style="width: 100%; padding: 10px; border-radius: 6px; border: none; background: #333; color: white; margin-bottom: 5px;">
+            <button id="manualConnectBtn" style="background: #34c759;">🔗 Forzar Conexión</button>
         </div>
 
         <div style="text-align: center; margin-top: 15px;">
@@ -47,10 +47,10 @@
     </div>
 
     <div id="receptor-manual-ui" class="hidden">
-        <h2 style="margin-bottom: 15px;">Estudio Central (Modo Manual Base64)</h2>
-        <p style="color: #aaa; font-size: 14px; margin-bottom: 5px;">1. Pega el código que envió el celular:</p>
-        <input type="text" id="recOfferInput" placeholder="Pega el código de la cámara aquí...">
-        <button id="recProcessBtn" style="background: #007aff;">2. Procesar y Copiar Respuesta Base64</button>
+        <h2 style="margin-bottom: 15px;">Estudio Central (Modo Manual)</h2>
+        <p style="color: #aaa; font-size: 14px; margin-bottom: 5px;">1. Pega el código del celular aquí:</p>
+        <input type="text" id="recOfferInput" placeholder="Pega el código...">
+        <button id="recProcessBtn" style="background: #007aff;">2. Procesar y Copiar Respuesta</button>
         <div id="recStatus" style="margin-top: 15px; color: #34c759; font-weight: bold;">Esperando código...</div>
     </div>
 

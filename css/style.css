@@ -43,7 +43,6 @@ button:disabled { background: #333 !important; color: #777; cursor: not-allowed;
 
 .hidden { display: none !important; }
 
-/* Interfaz del Receptor Manual (Estudio) centrada y limpia */
 #receptor-manual-ui {
     position: absolute; z-index: 20; top: 50%; left: 50%; transform: translate(-50%, -50%);
     background: #111; padding: 30px; border-radius: 12px; border: 1px solid #333; width: 90%; max-width: 500px; text-align: center;
