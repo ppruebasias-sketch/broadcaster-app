@@ -43,7 +43,6 @@ button:disabled { background: #333 !important; color: #777; cursor: not-allowed;
 
 .hidden { display: none !important; }
 
-/* DISEÑO DEL INTERRUPTOR DE AUDIO PARA OBS/VMIX */
 #unmute-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
     background: rgba(0, 0, 0, 0.7); z-index: 99; display: flex; justify-content: center; align-items: center;
@@ -54,7 +53,6 @@ button:disabled { background: #333 !important; color: #777; cursor: not-allowed;
 .unmute-box p { font-weight: bold; margin-bottom: 15px; font-size: 16px; }
 #unmuteBtn { background: #34c759; color: white; padding: 12px 24px; font-size: 14px; border-radius: 30px; }
 
-/* Interfaz del Receptor Manual */
 #receptor-manual-ui {
     position: absolute; z-index: 20; top: 50%; left: 50%; transform: translate(-50%, -50%);
     background: #111; padding: 30px; border-radius: 12px; border: 1px solid #333; width: 90%; max-width: 500px; text-align: center;

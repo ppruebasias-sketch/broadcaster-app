@@ -1,11 +1,11 @@
-console.log("Módulo de Transmisión WebRTC: CARGADO (v7.0)");
+console.log("Módulo de Transmisión WebRTC: CARGADO (v8.1)");
 
-// BLINDAJE: Envolvemos todo el código en un bloque Try/Catch.
-// Así, si algo falla, no "rompe" los botones de la interfaz.
 try {
     const statusText = document.getElementById('connection-status');
     const roomIdDisplay = document.getElementById('roomIdDisplay');
     const broadcastBtn = document.getElementById('broadcastBtn');
+    const unmuteOverlay = document.getElementById('unmute-overlay');
+    const unmuteBtn = document.getElementById('unmuteBtn');
 
     window.activePeerConnection = null; 
     window.cleanLinkReady = null; 
@@ -26,12 +26,58 @@ try {
     const roomToJoin = urlParams.get('room');
     const isManualReceptor = urlParams.get('mode') === 'receptor';
 
-    // -------------------------------------------------------------
-    // LÓGICA MANUAL: Cargamos esto PRIMERO para que jamás se bloquee
-    // -------------------------------------------------------------
     document.getElementById('toggleManualBtn').onclick = () => {
         document.getElementById('manual-ui').classList.toggle('hidden');
     };
+
+    if (isManualReceptor) {
+        document.body.classList.add('receiver-mode'); 
+        const manualUI = document.getElementById('receptor-manual-ui');
+        manualUI.classList.remove('hidden');
+
+        manualPC = new RTCPeerConnection(iceServersConfig);
+        
+        manualPC.ontrack = (event) => {
+            const videoElement = document.getElementById('localVideo');
+            videoElement.srcObject = event.streams[0];
+            
+            videoElement.muted = true;
+            videoElement.play().catch(err => console.log("Autoplay bloqueado:", err));
+            
+            unmuteOverlay.classList.remove('hidden');
+            unmuteBtn.onclick = () => {
+                videoElement.muted = false;
+                unmuteOverlay.classList.add('hidden');
+            };
+            manualUI.classList.add('hidden'); 
+        };
+
+        manualPC.onicecandidate = (event) => {
+            if (!event.candidate) {
+                const answerBase64 = encodeSDP(manualPC.localDescription);
+                navigator.clipboard.writeText(answerBase64).then(() => {
+                    document.getElementById('recStatus').innerText = "¡Respuesta Generada y Copiada! Envíala al celular.";
+                    document.getElementById('recProcessBtn').innerText = "Copiado ✔";
+                    document.getElementById('recProcessBtn').style.background = "#34c759";
+                }).catch(() => {
+                    document.getElementById('recStatus').innerHTML = `Copia este código de respuesta:<br><textarea onclick="this.select()" style="width:100%;height:100px;background:#222;color:white;border:1px solid #444;margin-top:5px;font-family:monospace;font-size:10px;word-break:break-all;">${answerBase64}</textarea>`;
+                });
+            }
+        };
+
+        document.getElementById('recProcessBtn').onclick = async () => {
+            const offerStr = document.getElementById('recOfferInput').value.trim();
+            if(!offerStr) return alert("Pega el código del celular.");
+            try {
+                document.getElementById('recStatus').innerText = "Procesando código de cámara...";
+                const offerDesc = decodeSDP(offerStr);
+                await manualPC.setRemoteDescription(new RTCSessionDescription(offerDesc));
+                
+                const answer = await manualPC.createAnswer();
+                await manualPC.setLocalDescription(answer);
+            } catch(e) { alert("Error al descifrar código: " + e.message); }
+        };
+    }
 
     if (document.getElementById('manualCopyOfferBtn')) {
         document.getElementById('manualCopyOfferBtn').onclick = async () => {
@@ -40,31 +86,30 @@ try {
             document.getElementById('manualCopyOfferBtn').innerText = "Generando código seguro...";
             manualPC = new RTCPeerConnection(iceServersConfig);
             
-            window.currentStream.getTracks().forEach(track => manualPC.addTrack(track, window.currentStream));
-            
-            const offer = await manualPC.createOffer();
-            await manualPC.setLocalDescription(offer);
-
-            manualPC.onicegatheringstatechange = () => {
-                if (manualPC.iceGatheringState === 'complete') {
+            manualPC.onicecandidate = (event) => {
+                if (!event.candidate) {
                     const offerBase64 = encodeSDP(manualPC.localDescription);
                     navigator.clipboard.writeText(offerBase64).then(() => {
                         document.getElementById('manualCopyOfferBtn').innerText = "¡Copiado! Envíalo al PC";
                         document.getElementById('manualCopyOfferBtn').style.background = "#34c759";
                     }).catch(err => {
-                        // Respaldo si el celular bloquea el portapapeles
                         prompt("Copia este código manualmente:", offerBase64);
+                        document.getElementById('manualCopyOfferBtn').innerText = "📋 Copiar Mi Código Base64";
                     });
                 }
             };
+
+            window.currentStream.getTracks().forEach(track => manualPC.addTrack(track, window.currentStream));
+            
+            const offer = await manualPC.createOffer();
+            await manualPC.setLocalDescription(offer);
         };
     }
 
     if (document.getElementById('manualConnectBtn')) {
         document.getElementById('manualConnectBtn').onclick = async () => {
-            const answerStr = document.getElementById('manualAnswerInput').value;
+            const answerStr = document.getElementById('manualAnswerInput').value.trim();
             if(!answerStr) return alert("Pega el código del estudio primero.");
-            
             try {
                 const answerDesc = decodeSDP(answerStr);
                 await manualPC.setRemoteDescription(new RTCSessionDescription(answerDesc));
@@ -75,54 +120,11 @@ try {
                 broadcastBtn.innerText = "EN VIVO (SEGURA)";
                 broadcastBtn.classList.add('pulse-live');
                 window.activePeerConnection = { peerConnection: manualPC };
-            } catch(e) { 
-                alert("Error crítico al procesar la respuesta: " + e.message); 
-            }
+            } catch(e) { alert("Error crítico al enlazar respuesta: " + e.message); }
         };
     }
 
-    // -------------------------------------------------------------
-    // RECEPTOR ESTUDIO
-    // -------------------------------------------------------------
-    if (isManualReceptor) {
-        document.body.classList.add('receiver-mode'); 
-        const manualUI = document.getElementById('receptor-manual-ui');
-        manualUI.classList.remove('hidden');
-
-        manualPC = new RTCPeerConnection(iceServersConfig);
-        manualPC.ontrack = (event) => {
-            const videoElement = document.getElementById('localVideo');
-            videoElement.srcObject = event.streams[0];
-            videoElement.muted = false;
-            manualUI.classList.add('hidden'); 
-        };
-
-        document.getElementById('recProcessBtn').onclick = async () => {
-            const offerStr = document.getElementById('recOfferInput').value;
-            if(!offerStr) return alert("Pega el código del celular.");
-            try {
-                document.getElementById('recStatus').innerText = "Procesando...";
-                const offerDesc = decodeSDP(offerStr);
-                await manualPC.setRemoteDescription(new RTCSessionDescription(offerDesc));
-                
-                const answer = await manualPC.createAnswer();
-                await manualPC.setLocalDescription(answer);
-
-                manualPC.onicegatheringstatechange = () => {
-                    if (manualPC.iceGatheringState === 'complete') {
-                        const answerBase64 = encodeSDP(manualPC.localDescription);
-                        navigator.clipboard.writeText(answerBase64).then(() => {
-                            document.getElementById('recStatus').innerText = "¡Respuesta Copiada! Envíala al celular.";
-                            document.getElementById('recProcessBtn').innerText = "Copiado ✔";
-                            document.getElementById('recProcessBtn').style.background = "#34c759";
-                        });
-                    }
-                };
-            } catch(e) { alert("Error al procesar: " + e.message); }
-        };
-
-    } else if (roomToJoin) {
-        // Receptor Automático
+    if (roomToJoin && !isManualReceptor) {
         document.body.classList.add('receiver-mode'); 
         if (typeof Peer !== 'undefined') {
             peer = new Peer({ debug: 2, config: iceServersConfig }); 
@@ -131,23 +133,24 @@ try {
                 call.on('stream', (remoteStream) => {
                     const videoElement = document.getElementById('localVideo');
                     videoElement.srcObject = remoteStream;
-                    videoElement.muted = false; 
+                    
+                    videoElement.muted = true;
+                    videoElement.play().catch(err => console.log(err));
+                    
+                    unmuteOverlay.classList.remove('hidden');
+                    unmuteBtn.onclick = () => {
+                        videoElement.muted = false;
+                        unmuteOverlay.classList.add('hidden');
+                    };
                 });
             });
         }
-
-    } else {
-        // -------------------------------------------------------------
-        // LÓGICA AUTOMÁTICA (EMISOR) - CON DETECCIÓN DE BLOQUEO
-        // -------------------------------------------------------------
+    } else if (!isManualReceptor) {
         if (typeof Peer === 'undefined') {
-            // El celular bloqueó el script de PeerJS (adblocker, ahorro de datos, etc)
-            console.warn("Librería de red bloqueada por el navegador.");
             statusText.innerText = "Servidor Bloqueado. Usa MODO MANUAL.";
             statusText.style.color = "#ff3b30";
             roomIdDisplay.innerText = "---";
         } else {
-            // Intentamos conexión normal
             const myRoomId = 'mr2-' + Math.floor(1000 + Math.random() * 9000);
             peer = new Peer(myRoomId, { debug: 2, config: iceServersConfig });
 
@@ -174,7 +177,7 @@ try {
             });
 
             peer.on('error', (err) => {
-                statusText.innerText = "Error Servidor Automático"; 
+                statusText.innerText = "Servidor Ocupado"; 
                 statusText.style.color = "#ffcc00";
                 roomIdDisplay.innerText = "Usa Modo Manual";
             });
@@ -214,7 +217,5 @@ try {
     };
 
 } catch (error) {
-    // Si la aplicación se estrella en algo no previsto, nos avisa en lugar de congelarse
-    alert("Error de Sistema detectado: " + error.message);
     console.error(error);
 }
