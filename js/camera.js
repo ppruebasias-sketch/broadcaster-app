@@ -1,4 +1,4 @@
-console.log("Módulo de Cámara y Hardware: CARGADO (v8.1)");
+console.log("Módulo de Cámara y Hardware: CARGADO (v9.0)");
 
 const videoElement = document.getElementById('localVideo');
 const videoSelect = document.getElementById('videoSource');
@@ -17,7 +17,6 @@ let currentAudioId = null;
 
 async function initHardware() {
     try {
-        // Validación de contexto seguro
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             throw new Error("API Bloqueada (Verifica HTTPS)");
         }
@@ -50,10 +49,9 @@ async function initHardware() {
         if(!hasAudio) audioSelect.innerHTML = '<option>No se detectaron micrófonos</option>';
 
         tempStream.getTracks().forEach(track => track.stop());
-        startupText.innerText = "Hardware Listo. (v8.1)";
+        startupText.innerText = "Hardware Listo. (v9.0)";
         startupText.style.fontSize = "14px";
     } catch (error) { 
-        // NUEVO: Informamos visualmente el error para no dejar al usuario congelado
         startupText.innerText = "Acceso Denegado por el Navegador";
         startupText.style.color = "#ff3b30";
         videoSelect.innerHTML = '<option>⚠️ Permiso de cámara bloqueado</option>';

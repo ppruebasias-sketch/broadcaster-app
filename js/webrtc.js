@@ -1,4 +1,4 @@
-console.log("Módulo de Transmisión WebRTC: CARGADO (v8.1)");
+console.log("Módulo de Transmisión WebRTC: CARGADO (v9.0)");
 
 try {
     const statusText = document.getElementById('connection-status');
@@ -6,6 +6,7 @@ try {
     const broadcastBtn = document.getElementById('broadcastBtn');
     const unmuteOverlay = document.getElementById('unmute-overlay');
     const unmuteBtn = document.getElementById('unmuteBtn');
+    const obsNotice = document.getElementById('obs-notice');
 
     window.activePeerConnection = null; 
     window.cleanLinkReady = null; 
@@ -22,10 +23,27 @@ try {
     function encodeSDP(desc) { return btoa(JSON.stringify(desc)); }
     function decodeSDP(str) { return JSON.parse(atob(str)); }
 
+    // NUEVO: Función a prueba de balas para forzar la llamada inicial, compatible con OBS.
+    function createEmptyStream() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const dest = ctx.createMediaStreamDestination();
+            return dest.stream;
+        } catch (e) {
+            console.warn("AudioContext no disponible (Probablemente es OBS). Usando lienzo de video alternativo.");
+            const canvas = document.createElement('canvas');
+            canvas.width = 1; canvas.height = 1;
+            return canvas.captureStream(1); // Creamos un video vacío de 1 píxel para engañar a OBS
+        }
+    }
+
     const urlParams = new URLSearchParams(window.location.search);
     const roomToJoin = urlParams.get('room');
     const isManualReceptor = urlParams.get('mode') === 'receptor';
 
+    // -------------------------------------------------------------
+    // LÓGICA MANUAL (MODO SEGURO CON CRONÓMETRO ANTI-BLOQUEO)
+    // -------------------------------------------------------------
     document.getElementById('toggleManualBtn').onclick = () => {
         document.getElementById('manual-ui').classList.toggle('hidden');
     };
@@ -44,25 +62,15 @@ try {
             videoElement.muted = true;
             videoElement.play().catch(err => console.log("Autoplay bloqueado:", err));
             
+            // Si estamos en OBS, a veces no necesitamos hacer clic
+            if(window.obsstudio) obsNotice.classList.remove('hidden');
+            
             unmuteOverlay.classList.remove('hidden');
             unmuteBtn.onclick = () => {
                 videoElement.muted = false;
                 unmuteOverlay.classList.add('hidden');
             };
             manualUI.classList.add('hidden'); 
-        };
-
-        manualPC.onicecandidate = (event) => {
-            if (!event.candidate) {
-                const answerBase64 = encodeSDP(manualPC.localDescription);
-                navigator.clipboard.writeText(answerBase64).then(() => {
-                    document.getElementById('recStatus').innerText = "¡Respuesta Generada y Copiada! Envíala al celular.";
-                    document.getElementById('recProcessBtn').innerText = "Copiado ✔";
-                    document.getElementById('recProcessBtn').style.background = "#34c759";
-                }).catch(() => {
-                    document.getElementById('recStatus').innerHTML = `Copia este código de respuesta:<br><textarea onclick="this.select()" style="width:100%;height:100px;background:#222;color:white;border:1px solid #444;margin-top:5px;font-family:monospace;font-size:10px;word-break:break-all;">${answerBase64}</textarea>`;
-                });
-            }
         };
 
         document.getElementById('recProcessBtn').onclick = async () => {
@@ -75,6 +83,26 @@ try {
                 
                 const answer = await manualPC.createAnswer();
                 await manualPC.setLocalDescription(answer);
+
+                // NUEVO: Cronómetro de 2 segundos. Si la red no responde rápido, cortamos y generamos el código.
+                let answerGenerated = false;
+                const generateAnswerBase64 = () => {
+                    if (answerGenerated) return;
+                    answerGenerated = true;
+                    const answerBase64 = encodeSDP(manualPC.localDescription);
+                    
+                    navigator.clipboard.writeText(answerBase64).then(() => {
+                        document.getElementById('recStatus').innerText = "¡Respuesta Generada y Copiada! Envíala al celular.";
+                        document.getElementById('recProcessBtn').innerText = "Copiado ✔";
+                        document.getElementById('recProcessBtn').style.background = "#34c759";
+                    }).catch(() => {
+                        document.getElementById('recStatus').innerHTML = `Copia este código de respuesta:<br><textarea onclick="this.select()" style="width:100%;height:100px;background:#222;color:white;border:1px solid #444;margin-top:5px;font-family:monospace;font-size:10px;word-break:break-all;">${answerBase64}</textarea>`;
+                    });
+                };
+
+                manualPC.onicecandidate = (event) => { if (!event.candidate) generateAnswerBase64(); };
+                setTimeout(generateAnswerBase64, 2000); // El Paracaídas
+
             } catch(e) { alert("Error al descifrar código: " + e.message); }
         };
     }
@@ -85,24 +113,28 @@ try {
             
             document.getElementById('manualCopyOfferBtn').innerText = "Generando código seguro...";
             manualPC = new RTCPeerConnection(iceServersConfig);
-            
-            manualPC.onicecandidate = (event) => {
-                if (!event.candidate) {
-                    const offerBase64 = encodeSDP(manualPC.localDescription);
-                    navigator.clipboard.writeText(offerBase64).then(() => {
-                        document.getElementById('manualCopyOfferBtn').innerText = "¡Copiado! Envíalo al PC";
-                        document.getElementById('manualCopyOfferBtn').style.background = "#34c759";
-                    }).catch(err => {
-                        prompt("Copia este código manualmente:", offerBase64);
-                        document.getElementById('manualCopyOfferBtn').innerText = "📋 Copiar Mi Código Base64";
-                    });
-                }
-            };
-
             window.currentStream.getTracks().forEach(track => manualPC.addTrack(track, window.currentStream));
             
             const offer = await manualPC.createOffer();
             await manualPC.setLocalDescription(offer);
+
+            // NUEVO: Cronómetro de 2 segundos para el celular también.
+            let offerGenerated = false;
+            const generateOfferBase64 = () => {
+                if (offerGenerated) return;
+                offerGenerated = true;
+                const offerBase64 = encodeSDP(manualPC.localDescription);
+                navigator.clipboard.writeText(offerBase64).then(() => {
+                    document.getElementById('manualCopyOfferBtn').innerText = "¡Copiado! Envíalo al PC";
+                    document.getElementById('manualCopyOfferBtn').style.background = "#34c759";
+                }).catch(err => {
+                    prompt("Copia este código manualmente:", offerBase64);
+                    document.getElementById('manualCopyOfferBtn').innerText = "📋 Copiar Mi Código Base64";
+                });
+            };
+
+            manualPC.onicecandidate = (event) => { if (!event.candidate) generateOfferBase64(); };
+            setTimeout(generateOfferBase64, 2000); // El Paracaídas
         };
     }
 
@@ -124,6 +156,9 @@ try {
         };
     }
 
+    // -------------------------------------------------------------
+    // LÓGICA AUTOMÁTICA (PEERJS)
+    // -------------------------------------------------------------
     if (roomToJoin && !isManualReceptor) {
         document.body.classList.add('receiver-mode'); 
         if (typeof Peer !== 'undefined') {
@@ -136,6 +171,8 @@ try {
                     
                     videoElement.muted = true;
                     videoElement.play().catch(err => console.log(err));
+                    
+                    if(window.obsstudio) obsNotice.classList.remove('hidden');
                     
                     unmuteOverlay.classList.remove('hidden');
                     unmuteBtn.onclick = () => {
@@ -193,12 +230,6 @@ try {
                 }
             });
         }
-    }
-
-    function createEmptyStream() {
-        const ctx = new window.AudioContext();
-        const dest = ctx.createMediaStreamDestination();
-        return dest.stream;
     }
 
     window.updateWebRTCStream = function(type) {
