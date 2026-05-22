@@ -10,7 +10,14 @@
 <body>
 
     <div id="app-container">
-        <h1 id="startup-text">Iniciando Sistema... (v7.0)</h1>
+        <h1 id="startup-text">Iniciando Sistema... (v8.0)</h1>
+    </div>
+
+    <div id="unmute-overlay" class="hidden">
+        <div class="unmute-box">
+            <p>🔊 Transmisión Recibida</p>
+            <button id="unmuteBtn">Activar Audio en Producción</button>
+        </div>
     </div>
 
     <video id="localVideo" autoplay playsinline muted></video>
@@ -50,8 +57,8 @@
         <h2 style="margin-bottom: 15px;">Estudio Central (Modo Manual)</h2>
         <p style="color: #aaa; font-size: 14px; margin-bottom: 5px;">1. Pega el código del celular aquí:</p>
         <input type="text" id="recOfferInput" placeholder="Pega el código...">
-        <button id="recProcessBtn" style="background: #007aff;">2. Procesar y Copiar Respuesta</button>
-        <div id="recStatus" style="margin-top: 15px; color: #34c759; font-weight: bold;">Esperando código...</div>
+        <button id="recProcessBtn" style="background: #007aff;">2. Procesar y Generar Respuesta</button>
+        <div id="recStatus" style="margin-top: 15px; color: #34c759; font-weight: bold; font-size: 13px; word-break: break-all;">Esperando código...</div>
     </div>
 
     <script src="js/camera.js"></script>
